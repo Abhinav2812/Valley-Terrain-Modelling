@@ -18,6 +18,10 @@ void drawPoly(vector<int> indices)
     }
     glEnd();
 }
+void drawSurface()
+{
+    drawPoly({8,9,10,11});
+}
 void drawCube()
 {
     drawPoly({0,3,2,1});
@@ -71,6 +75,7 @@ void display()
     glClearColor( bgcolor.x,bgcolor.y,bgcolor.z, 1 );
     glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
     drawCube();
+    drawSurface();
     glutSwapBuffers();
     if(maxFPS)
         glutPostRedisplay();
