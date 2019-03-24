@@ -1,6 +1,7 @@
 #pragma once
 #include<fstream>
 #include<iostream>
+#include<string>
 #include<vector>
 #include<sstream>
 #include<GL/glew.h>
@@ -25,6 +26,7 @@ GLuint loadTexture(const string &fileName, GLenum repeatMode = GL_REPEAT)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     int width, height, numChannels;
     unsigned char *data = stbi_load(fileName.c_str(), &width, &height, &numChannels, 0);
+    cout<<numChannels<<endl;
     assert(data!=NULL);
     if (data)
     {
@@ -107,9 +109,167 @@ GLuint LoadProgram(const string &vertexShader, const string &fragmentShader)
     glDeleteShader(fragmentShaderID);
     return programID;
 }
+class Font{
+    GLuint texID, VAO, verticesCount, programID;
+    int lineHeight, base, scaleW,scaleH;
+    struct{
+        float x,y,width,height,xoffset,yoffset,xadvance;
+    }buffer[256];
+    int parseInt(const string &s)
+    {
+        bool eq = false;
+        int val = 0, mult = 1;
+        for(auto &i:s)
+        {
+            if(i=='=')
+            {
+                eq = true;
+            }
+            else if(eq)
+            {
+                if(i=='-')
+                    mult = -1;
+                else
+                    val=val*10+(i-'0');
+            }
+        }
+        return val*mult;
+    }
+    string parseStr(const string &s)
+    {
+        string ret;
+        bool eq = false;
+        for(auto &i:s)
+        {
+            if(i=='\"')
+                eq = true;
+            else if(eq)
+            {
+                ret.push_back(i);
+            }
+        }
+        return ret;
+    }
+    public:
+    Font()
+    {
+        this->programID = 0;
+    }
+    void loadFont(const string &fileName)
+    {
+        if(programID == 0)
+            this->programID = LoadProgram("font.vs","font.frag");
+        ifstream ifile(fileName);
+        string s;
+        getline(ifile, s); //ignore the info face...
+        ifile>>s;//common
+        ifile>>s;//lineHeight=
+        lineHeight = parseInt(s);
+        ifile>>s;//base=
+        base = parseInt(s);
+        ifile>>s;//scaleW=
+        scaleW = parseInt(s);
+        ifile>>s;//scaleH=
+        scaleH = parseInt(s);
+        ifile>>s>>s;//pages=,packed=,ignored
+        ifile>>s>>s>>s;//page,id,file=...
+        string texFile = parseStr(s);
+        texID = loadTexture(texFile);
+        ifile>>s>>s;//chars count=
+        int numChars = parseInt(s);
+        while(numChars--)
+        {
+            ifile>>s>>s;//char,id=
+            int idx = parseInt(s);
+            ifile>>s;//x=
+            buffer[idx].x = parseInt(s);
+            buffer[idx].x/= 1. * scaleW;
+            ifile>>s;//y=
+            buffer[idx].y = parseInt(s);
+            buffer[idx].y/= 1. * scaleH;
+            ifile>>s;//width=
+            buffer[idx].width = parseInt(s);
+            buffer[idx].width /= 1. * scaleW;            
+            ifile>>s;//height=
+            buffer[idx].height = parseInt(s);
+            buffer[idx].height /= 1. * scaleH;            
+            ifile>>s;//xoffset=
+            buffer[idx].xoffset = parseInt(s);
+            ifile>>s;//yoffset=
+            buffer[idx].yoffset = parseInt(s);
+            ifile>>s;//xadvance=
+            buffer[idx].xadvance = parseInt(s);
+            ifile>>s>>s;//page=,chnl=(ignore)
+        }
+    }
+    void drawPrep(const string &s, float startX, float startY, float endX, float endY, float scale, float r=0.,float g=0., float b=0.)
+    {
+        float cursorX = startX, cursorY = startY;
+        vector<vertex> vertices;
+        for(auto &i:s)
+        {
+            if(i=='\n')
+            {
+                cursorY-=scale*this->lineHeight;
+                cursorX=startX;
+            }
+            else
+            {
+                if(cursorX+scale*buffer[i].xadvance>endX)
+                {
+                    cursorY-=scale*this->lineHeight;
+                    cursorX=startX;
+                }
+                float leftX = cursorX+scale*buffer[i].xoffset;
+                float upY = cursorY-scale*buffer[i].yoffset;
+                float rightX = leftX+scale*scaleW*buffer[i].width;
+                float downY = upY-scale*scaleH*buffer[i].height;
+                float leftXt = buffer[i].x;
+                float upYt = buffer[i].y;
+                float rightXt = buffer[i].x+buffer[i].width;
+                float downYt = buffer[i].y+buffer[i].height;
+                vertices.push_back({leftX,upY,-0.995,r,g,b,0,leftXt,upYt});
+                vertices.push_back({rightX,upY,-0.995,r,g,b,0,rightXt,upYt});
+                vertices.push_back({leftX,downY,-0.995,r,g,b,0,leftXt,downYt});
+                vertices.push_back({leftX,downY,-0.995,r,g,b,0,leftXt,downYt});
+                vertices.push_back({rightX,downY,-0.995,r,g,b,0,rightXt,downYt});
+                vertices.push_back({rightX,upY,-0.995,r,g,b,0,rightXt,upYt});
+                cursorX+=buffer[i].xadvance*scale;
+            }
+        }
+        GLuint VBO;
+        glGenBuffers(1,&VBO);
+        glGenVertexArrays(1,&VAO);
+        glBindVertexArray(VAO);
+        glBindBuffer(GL_ARRAY_BUFFER, VBO);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(vertex)*vertices.size(), vertices.data(), GL_STATIC_DRAW);
+        this->verticesCount = vertices.size();
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vertices[0]), 0);    
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(vertices[0]), (GLvoid*)(sizeof(float)*3));
+        glEnableVertexAttribArray(1);
+        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(vertices[0]), (GLvoid*)(sizeof(float)*7));
+        glEnableVertexAttribArray(2);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glBindVertexArray(0);
+    }
+    void drawNow(GLuint prevVert=0)
+    {
+        glBindTexture(GL_TEXTURE_2D, texID);
+        glUseProgram(this->programID);
+        glBindVertexArray(this->VAO);
+        glDrawArrays(GL_TRIANGLES, 0, this->verticesCount);
+        glBindVertexArray(0);
+    }
+};
 //math funcs
 void adjustCam()
 {
+    glm::vec3 front;
+    front.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
+    front.y = sin(glm::radians(pitch));
+    front.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+    dirn = glm::normalize(front);
     view = glm::lookAt(camera, camera+dirn, up);
     glUniformMatrix4fv(glGetUniformLocation(programID, "view"), 1, GL_FALSE, glm::value_ptr(view));
 }
@@ -136,9 +296,9 @@ std::vector<int> triangulate(const std::vector<int> &vert)
 float height(float x, float y)
 {
     const int mult1 = 1, mult2 = 1;
-    return mult1*sin(x)+mult2*cos(y);
+    return sin(mult1*x+mult2*y);
 }
-GLuint generateTerrain(GLuint &VAO, float delta = 0.1, int inf = 10, float texMult = 0.3)
+GLuint generateTerrain(GLuint &VAO, float delta = 1, int inf = 20, float texMult = 0.3)
 {
     GLuint VBO, EBO;
     glGenBuffers(1, &VBO);

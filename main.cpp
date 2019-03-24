@@ -9,9 +9,11 @@
 using namespace std;
 GLuint VAO, VBO, EBO, programID, texID, terrainVAO, terrainNumVertices;
 int frame = 0, Time = 0, timebase=0;
+Font font;
 const int FPS = 120;
-bool fullScreen = true, maxFPS = false, wireframe = false;
+bool fullScreen = true, maxFPS = false, wireframe = false, showHelp = true;
 void timer(int) {
+    // yaw+=.1;
     glutPostRedisplay();
     if(!maxFPS)
         glutTimerFunc(1000/FPS, timer, 0);
@@ -42,6 +44,8 @@ void fps()
 }
 void setup()
 {
+    font.loadFont("font.fnt");
+    font.drawPrep(readFile("helptext.txt"),-.8,.5,1,-.5,.001,1.,0.,1.);
     programID = LoadProgram("vertex.vs", "fragment.frag");
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1,&VBO);
@@ -67,11 +71,23 @@ void setup()
 }
 void displayMe()
 {
+    glEnable(GL_DEPTH_TEST);
     adjustCam();
     glm::mat4 model = glm::rotate(glm::mat4(1.f),glm::radians(-45.f),glm::vec3(1.f,0.f,0.f));
     glUniformMatrix4fv(glGetUniformLocation(programID, "model"), 1, GL_FALSE, glm::value_ptr(model));
-    glClearColor(0.2,0.5,0.8,1.0);
-    glClear(GL_COLOR_BUFFER_BIT);
+    glClearColor(0.2,0.5,0.8,0.0);
+    glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+    if(showHelp)
+    {
+        glEnable( GL_BLEND );  
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        if(wireframe)
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);            
+        font.drawNow();
+        if(wireframe)
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        glDisable( GL_BLEND );  
+    }
     glUseProgram(programID);
     glBindTexture(GL_TEXTURE_2D, texID);
     glBindVertexArray(terrainVAO);
@@ -134,7 +150,10 @@ void keyboard(unsigned char c, int x, int y)
             glutReshapeWindow(glutGet(GLUT_SCREEN_WIDTH), glutGet(GLUT_SCREEN_HEIGHT));
         }
         break;
-        case '`':case '~':
+        case 'h':case 'H':
+        showHelp = !showHelp;
+        break;
+        case 'u':case 'U':
         maxFPS = !maxFPS;
         if(!maxFPS)
         {
@@ -197,11 +216,6 @@ void mouseMovement(int x, int y)
         pitch = 89.0f;
     if (pitch < -89.0f)
         pitch = -89.0f;
-    glm::vec3 front;
-    front.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
-    front.y = sin(glm::radians(pitch));
-    front.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
-    dirn = glm::normalize(front);
     if(1)
     {
         mousetoCenter();
@@ -216,7 +230,7 @@ int main(int argc, char **argv)
 {
     glutInit(&argc,argv);
     glutInitDisplayMode(GLUT_DOUBLE|GLUT_RGBA|GLUT_DEPTH);
-    glutCreateWindow("LearnOpenGL");
+    glutCreateWindow("BLearnOpenGL");
     glutFullScreen();
     glutSetCursor(GLUT_CURSOR_NONE);
     GLenum glewError = glewInit();

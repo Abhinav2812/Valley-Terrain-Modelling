@@ -16,10 +16,6 @@ glm::vec3 camera(0.f,0.f,10.f);
 glm::vec3 dirn(0.f,0.f,-1.f);
 glm::vec3 up(0.f,1.f,0.f);
 glm::mat4 view(1.f), projection(1.f);
-// vertex origin = {0,0,0};
-// vertex camera = {0,0,10};
-// vertex dirn = {0,0,0};
-// vertex bgcolor = {0,0,1};
 vertex vertices[12] = {
     {-1.0, 1.0, 1.0,1.0,0.0,1.0,1.0,0.0,0.0},
     { 1.0, 1.0, 1.0,1.0,1.0,0.0,1.0,1.0,0.0},
