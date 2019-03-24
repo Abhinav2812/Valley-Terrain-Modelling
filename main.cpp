@@ -7,7 +7,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 using namespace std;
-GLuint VAO, VBO, EBO, programID, texID, terrainVAO, terrainNumVertices;
+GLuint VAO, VBO, EBO, programID, texID, terrainVAO, terrainNumVertices, cloudNumVertices;
 int frame = 0, Time = 0, timebase=0;
 Font font;
 const int FPS = 120;
@@ -44,26 +44,9 @@ void fps()
 }
 void setup()
 {
-    font.loadFont("font.fnt");
+    font.loadFont("karumbi.fnt");
     font.drawPrep(readFile("helptext.txt"),-.8,.5,1,-.5,.001,1.,0.,1.);
     programID = LoadProgram("vertex.vs", "fragment.frag");
-    glGenVertexArrays(1, &VAO);
-    glGenBuffers(1,&VBO);
-    glGenBuffers(1,&EBO);
-    glBindVertexArray(VAO);
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(elements), elements, GL_STATIC_DRAW);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vertices[0]), 0);    
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(vertices[0]), (GLvoid*)(sizeof(float)*3));
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(vertices[0]), (GLvoid*)(sizeof(float)*7));
-    glEnableVertexAttribArray(2);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
     texID = loadTexture("grass.bmp");
     terrainNumVertices = generateTerrain(terrainVAO);
     timer(0);
@@ -74,6 +57,7 @@ void displayMe()
     glEnable(GL_DEPTH_TEST);
     adjustCam();
     glm::mat4 model = glm::rotate(glm::mat4(1.f),glm::radians(-45.f),glm::vec3(1.f,0.f,0.f));
+    glUniform3fv(glGetUniformLocation(programID, "sunRayDirn"), 1, glm::value_ptr(sundirn));
     glUniformMatrix4fv(glGetUniformLocation(programID, "model"), 1, GL_FALSE, glm::value_ptr(model));
     glClearColor(0.2,0.5,0.8,0.0);
     glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);

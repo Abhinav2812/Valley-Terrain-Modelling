@@ -228,12 +228,12 @@ class Font{
                 float upYt = buffer[i].y;
                 float rightXt = buffer[i].x+buffer[i].width;
                 float downYt = buffer[i].y+buffer[i].height;
-                vertices.push_back({leftX,upY,-0.995,r,g,b,0,leftXt,upYt});
-                vertices.push_back({rightX,upY,-0.995,r,g,b,0,rightXt,upYt});
-                vertices.push_back({leftX,downY,-0.995,r,g,b,0,leftXt,downYt});
-                vertices.push_back({leftX,downY,-0.995,r,g,b,0,leftXt,downYt});
-                vertices.push_back({rightX,downY,-0.995,r,g,b,0,rightXt,downYt});
-                vertices.push_back({rightX,upY,-0.995,r,g,b,0,rightXt,upYt});
+                vertices.push_back({leftX,upY,-0.995,r,g,b,0,0,0,1,leftXt,upYt});
+                vertices.push_back({rightX,upY,-0.995,r,g,b,0,0,0,1,rightXt,upYt});
+                vertices.push_back({leftX,downY,-0.995,r,g,b,0,0,0,1,leftXt,downYt});
+                vertices.push_back({leftX,downY,-0.995,r,g,b,0,0,0,1,leftXt,downYt});
+                vertices.push_back({rightX,downY,-0.995,r,g,b,0,0,0,1,rightXt,downYt});
+                vertices.push_back({rightX,upY,-0.995,r,g,b,0,0,0,1,rightXt,upYt});
                 cursorX+=buffer[i].xadvance*scale;
             }
         }
@@ -248,8 +248,10 @@ class Font{
         glEnableVertexAttribArray(0);
         glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(vertices[0]), (GLvoid*)(sizeof(float)*3));
         glEnableVertexAttribArray(1);
-        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(vertices[0]), (GLvoid*)(sizeof(float)*7));
+        glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(vertices[0]), (GLvoid*)(sizeof(float)*7));
         glEnableVertexAttribArray(2);
+        glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(vertices[0]), (GLvoid*)(sizeof(float)*10));
+        glEnableVertexAttribArray(3);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         glBindVertexArray(0);
     }
@@ -298,6 +300,17 @@ float height(float x, float y)
     const int mult1 = 1, mult2 = 1;
     return sin(mult1*x+mult2*y);
 }
+glm::vec3 getNormal(float x, float y, float eps=0.1f)
+{
+    float me = height(x,y), up = height(x,y+eps)-me, right= height(x+eps,y)-me;
+    float down = height(x,y-eps)-me, left = height(x-eps,y)-me;
+    glm::vec3 first = glm::normalize(glm::vec3(-right,-up,eps));//right*up
+    glm::vec3 second = glm::normalize(glm::vec3(left,-up,eps));//up*left
+    glm::vec3 third = glm::normalize(glm::vec3(left,down,eps));//left*down
+    glm::vec3 fourth = glm::normalize(glm::vec3(-right,down,eps));//down*right
+    glm::vec3 net = glm::normalize((first+second+third+fourth)/4.f);
+    return net;
+}
 GLuint generateTerrain(GLuint &VAO, float delta = 1, int inf = 20, float texMult = 0.3)
 {
     GLuint VBO, EBO;
@@ -314,7 +327,8 @@ GLuint generateTerrain(GLuint &VAO, float delta = 1, int inf = 20, float texMult
         int loc = 0;
         for(float y=-inf;y<=+inf;y+=delta)
         {
-            buffer.push_back({x,y,height(x,y),0,1,0,0,texMult*(x+inf),texMult*(y+inf)});
+            glm::vec3 normal = getNormal(x,y);
+            buffer.push_back({x,y,height(x,y),0,1,0,0,normal.x,normal.y,normal.z,texMult*(x+inf),texMult*(y+inf)});
             if(previdxs.size())
             {
                 if(loc!=0)
@@ -342,14 +356,20 @@ GLuint generateTerrain(GLuint &VAO, float delta = 1, int inf = 20, float texMult
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertex)*buffer.size(), buffer.data(), GL_STATIC_DRAW);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int)*ebo.size(), ebo.data(), GL_STATIC_DRAW);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vertices[0]), 0);    
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(buffer[0]), 0);    
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(vertices[0]), (GLvoid*)(sizeof(float)*3));
+    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(buffer[0]), (GLvoid*)(sizeof(float)*3));
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(vertices[0]), (GLvoid*)(sizeof(float)*7));
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(buffer[0]), (GLvoid*)(sizeof(float)*7));
     glEnableVertexAttribArray(2);
+    glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(buffer[0]), (GLvoid*)(sizeof(float)*10));
+    glEnableVertexAttribArray(3);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
     return ebo.size();   
+}
+GLuint generateCloud()
+{
+    // vector<vertex> 
 }
