@@ -295,10 +295,27 @@ std::vector<int> triangulate(const std::vector<int> &vert)
     }
     return ans;
 }
+float getNoise(float x,float y){
+    int seed=1e7+321523;
+    srand(seed-x*345-y*1752);
+    return (double)(rand()%100 -50)/50.;
+}
+float getSmoothNoise(float x,float y){
+    // return 1;
+    float c=1;
+    float corners =(getNoise(x+c,y+c) + getNoise(x-c,y-c) +getNoise(x-c,y+c)+getNoise(x+c,y-c))/16.;
+    float sides = (getNoise(x,y+c) + getNoise(x,y-c) +getNoise(x-c,y)+getNoise(x+c,y))/16.;
+    float center = getNoise(x,y)/4.;
+    // cerr<<corners+sides+center<<endl;
+    // return abs(corners+sides+center);
+    return corners+center*1.5+sides;
+}
 float height(float x, float y)
 {
-    const int mult1 = 1, mult2 = 1;
-    return sin(mult1*x+mult2*y);
+    // const int mult1 = 1, mult2 = 1;
+    // return sin(mult1*x+mult2*y);
+    // return getNoise(x,y);
+    return getSmoothNoise(x,y);
 }
 glm::vec3 getNormal(float x, float y, float eps=0.1f)
 {
