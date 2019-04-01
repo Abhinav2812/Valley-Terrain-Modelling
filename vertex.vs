@@ -9,6 +9,7 @@ uniform mat4 proj;
 uniform mat4 Trans;
 out vec4 color;
 out vec2 texCoord;
+out vec2 texCoordShadow;
 out vec3 normal;
 out vec4 fragPos;
 void main()
@@ -18,4 +19,6 @@ void main()
     texCoord = TexCoord;
     normal = Normal;
     fragPos = model * position;
+    vec2 TexCoordShadow = TexCoord/12.f;
+    texCoordShadow = TexCoordShadow;
 }

@@ -7,11 +7,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 using namespace std;
-GLuint VAO, VBO, EBO, programID, texID, terrainVAO, terrainNumVertices, cloudNumVertices;
-int frame = 0, Time = 0, timebase=0;
 Font font;
-const int FPS = 120;
-bool fullScreen = true, maxFPS = false, wireframe = false, showHelp = true;
 void timer(int) {
     // yaw+=.1;
     glutPostRedisplay();
@@ -24,7 +20,7 @@ void debugmat(glm::mat4 m)
     {
         for(int j=0;j<4;j++)
         {
-            cout<<m[j][i]<<" ";
+            cout<<fixed<<setprecision(1)<<m[j][i]<<" ";
         }
         cout<<endl;
     }
@@ -47,8 +43,17 @@ void setup()
     font.loadFont("karumbi.fnt");
     font.drawPrep(readFile("helptext.txt"),-.8,.5,1,-.5,.001,1.,0.,1.);
     programID = LoadProgram("vertex.vs", "fragment.frag");
-    texID = loadTexture("grass.bmp");
+    texID = loadTexture("grass_ground.bmp");
+    // exit(0);
     terrainNumVertices = generateTerrain(terrainVAO);
+    cloudTexID = loadTexture("cloud.png");
+    cloudProgramID = LoadProgram("vertexCloud.vs", "fragmentCloud.frag");
+    cloudVAO = setupClouds();
+    sunTexID = loadTexture("sun.png");
+    objNumVertices = loadOBJ("birch_tree.obj",objVAO);
+    objTexID = loadTexture("grass.bmp");
+    objProgramID = LoadProgram("vertex.vs", "fragmentOBJ.frag");
+    shadowTexID = GenShadows();
     timer(0);
     // mvp = projection * view * model;
 }
@@ -56,7 +61,8 @@ void displayMe()
 {
     glEnable(GL_DEPTH_TEST);
     adjustCam();
-    glm::mat4 model = glm::rotate(glm::mat4(1.f),glm::radians(-45.f),glm::vec3(1.f,0.f,0.f));
+    // glm::mat4 model = glm::rotate(glm::mat4(1.f),glm::radians(-45.f),glm::vec3(1.f,0.f,0.f));
+    glm::mat4 model(1.f);
     glUniform3fv(glGetUniformLocation(programID, "sunRayDirn"), 1, glm::value_ptr(sundirn));
     glUniformMatrix4fv(glGetUniformLocation(programID, "model"), 1, GL_FALSE, glm::value_ptr(model));
     glClearColor(0.2,0.5,0.8,0.0);
@@ -72,7 +78,15 @@ void displayMe()
             glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
         glDisable( GL_BLEND );  
     }
+    drawSun(cloudVAO, cloudProgramID, sunTexID);
+    drawTrees();
+    drawClouds(cloudVAO, cloudProgramID, cloudTexID);
     glUseProgram(programID);
+    glUniform1i(glGetUniformLocation(programID,"theTexture"),0);
+    glUniform1i(glGetUniformLocation(programID,"shadowTex"),1);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, shadowTexID);
+    glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, texID);
     glBindVertexArray(terrainVAO);
     // GLuint uid = glGetUniformLocation(programID, "Trans");
@@ -155,6 +169,23 @@ void keyboard(unsigned char c, int x, int y)
             glPolygonMode(GL_FRONT_AND_BACK,GL_FILL);
         }
         break;
+        case 'c': mouseLock = !mouseLock;
+        if(mouseLock)
+        {
+            glutSetCursor(GLUT_CURSOR_NONE);
+        }
+        else
+        {
+            glutSetCursor(GLUT_CURSOR_LEFT_ARROW);
+        }
+        break;
+        case 'w':
+        scaleFac+=.1;
+        break;
+        case 's':
+        if(scaleFac>.2f)
+            scaleFac-=.1;
+        break;
     }
     // translate(origin.x,origin.y,origin.z);
     // io.unlock();
@@ -162,33 +193,47 @@ void keyboard(unsigned char c, int x, int y)
 }
 void mousetoCenter()
 {
-    static int centerX = glutGet(GLUT_WINDOW_WIDTH) / 2;
-    static int centerY = glutGet(GLUT_WINDOW_HEIGHT) / 2;
     glutWarpPointer(centerX,centerY);
 }
 void mouseFunc(int button, int state, int x, int y)
 {
+    float scrollmult=.3f;
+    glm::vec3 temp;
     switch(button)
     {
-        case 3:camera+=.1f*dirn;break; //scroll down
-        case 4:camera+=-.1f*dirn;break; //scroll up
-        case 5:camera-=.1f*cross(up,dirn);break; //scroll left
-        case 6:camera+=.1f*cross(up,dirn);break; //scroll right
+        case 3:
+            if(camera.y+dirn.y>0.5)
+                camera+=scrollmult*dirn;
+            break; //scroll down
+        case 4:
+            if(camera.y-dirn.y>0.5)
+                camera+=-scrollmult*dirn;
+                break; //scroll up
+        case 5:
+        temp =cross(up,dirn);
+        if(camera.y-dirn.y>0.5) 
+            camera-=scrollmult*temp;
+        break; //scroll left
+        case 6:
+        temp =cross(up,dirn);
+        if(camera.y+temp.y>0.5)
+            camera+=scrollmult*temp;
+        break; //scroll right
         // case GLUT_RIGHT_BUTTON:camera.z++;break;
     }
 }
 void mouseMovement(int x, int y) 
 {
-    static int centerX = glutGet(GLUT_WINDOW_WIDTH) / 2;
-    static int centerY = glutGet(GLUT_WINDOW_HEIGHT) / 2;
     static bool warpCall = true;
+    static float lastx = x;
+    static float lasty = y;
     if(warpCall)
     {
         warpCall = false;
+        lastx = centerX;
+        lasty = centerY;
         return;
     }
-    static float lastx = x;
-    static float lasty = y;
     lastx = (float)x - lastx;
     lasty = (float)y - lasty;
     float sensitivity = 0.1f;
@@ -200,21 +245,24 @@ void mouseMovement(int x, int y)
         pitch = 89.0f;
     if (pitch < -89.0f)
         pitch = -89.0f;
-    if(1)
+    if(mouseLock)
     {
         mousetoCenter();
         warpCall = true;
-        x = centerX;
-        y = centerY;
+        x = 10;
+        y = 10;
     }
     lastx = (float)x;
     lasty = (float)y;
 }
 int main(int argc, char **argv)
 {
+    float val = height(10,10);
+    for(int i=0;i<100;i++)
+        assert(val==height(10,10));
     glutInit(&argc,argv);
     glutInitDisplayMode(GLUT_DOUBLE|GLUT_RGBA|GLUT_DEPTH);
-    glutCreateWindow("BLearnOpenGL");
+    glutCreateWindow("Valley Terrain Modelling");
     glutFullScreen();
     glutSetCursor(GLUT_CURSOR_NONE);
     GLenum glewError = glewInit();

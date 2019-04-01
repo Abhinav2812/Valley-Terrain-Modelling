@@ -1,6 +1,8 @@
       help
 h:toggle help
-u:toggle fps limiter
-space:toggle wireframe
 f:toggle fullscreen
+space:toggle wireframe
+u:toggle fps limiter
+c:toggle mouselock
+w/s:resize clouds and sun
 q:quit

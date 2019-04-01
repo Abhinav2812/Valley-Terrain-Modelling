@@ -14,6 +14,8 @@
 #include "stb_image.h"
 using namespace std;
 extern GLuint programID;
+extern int centerX, centerY;
+extern void debugmat(glm::mat4 m);
 //io funcs
 GLuint loadTexture(const string &fileName, GLenum repeatMode = GL_REPEAT)
 {
@@ -26,11 +28,15 @@ GLuint loadTexture(const string &fileName, GLenum repeatMode = GL_REPEAT)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     int width, height, numChannels;
     unsigned char *data = stbi_load(fileName.c_str(), &width, &height, &numChannels, 0);
-    cout<<numChannels<<endl;
     assert(data!=NULL);
     if (data)
     {
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+        if(numChannels == 3)
+        {
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+        }
+        else
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
         glGenerateMipmap(GL_TEXTURE_2D);
     }
     else
@@ -39,6 +45,73 @@ GLuint loadTexture(const string &fileName, GLenum repeatMode = GL_REPEAT)
     }
     stbi_image_free(data);
     return texID;
+}
+GLuint loadOBJ(const string &fileName, GLuint &VAO)
+{
+    glm::vec4 color(35.f/255.f,12.f/255.f,27.f/255.f,1.f);
+    ifstream inFile(fileName.c_str());
+    if(!inFile.is_open())
+    {
+        throw FileOpenError();
+    }
+    string line;
+    vector<glm::vec3> v,vn;
+    vector<glm::vec2> vt;
+    vector<vertex> data;
+    while(getline(inFile, line))
+    {
+        stringstream tmp;
+        if(line[0]=='#'||line[0]=='o')
+            continue;
+        tmp<<line;
+        glm::vec3 val;
+        tmp>>line;
+        if(line=="vn"||line=="v")
+        {
+            tmp>>val.x>>val.y>>val.z;
+            if(line=="v")
+            {
+                v.push_back(val);
+            }
+            else if(line=="vn")
+            {
+                vn.push_back(val);
+            }
+            
+        }
+        else if(line=="vt")
+        {
+            tmp>>val.x>>val.y;
+            vt.push_back(glm::vec2(val));
+        }
+        else if(line=="f")
+        {
+            char c;
+            tmp>>val.x>>c>>val.y>>c>>val.z;
+            data.push_back({v[val.x-1].x,v[val.x-1].y,v[val.x-1].z,color.x,color.y,color.z,color.w,vn[val.y-1].x,vn[val.y-1].y,vn[val.y-1].z,v[val.z-1].x,v[val.z-1].y});
+            tmp>>val.x>>c>>val.y>>c>>val.z;
+            data.push_back({v[val.x-1].x,v[val.x-1].y,v[val.x-1].z,color.x,color.y,color.z,color.w,vn[val.y-1].x,vn[val.y-1].y,vn[val.y-1].z,v[val.z-1].x,v[val.z-1].y});
+            tmp>>val.x>>c>>val.y>>c>>val.z;
+            data.push_back({v[val.x-1].x,v[val.x-1].y,v[val.x-1].z,color.x,color.y,color.z,color.w,vn[val.y-1].x,vn[val.y-1].y,vn[val.y-1].z,v[val.z-1].x,v[val.z-1].y});
+        }
+    }
+    GLuint VBO;
+    glGenBuffers(1, &VBO);
+    glGenVertexArrays(1, &VAO);
+    glBindVertexArray(VAO);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertex)*data.size(), data.data(), GL_STATIC_DRAW);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(data[0]), 0);    
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(data[0]), (GLvoid*)(sizeof(float)*3));
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(data[0]), (GLvoid*)(sizeof(float)*7));
+    glEnableVertexAttribArray(2);
+    glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(data[0]), (GLvoid*)(sizeof(float)*10));
+    glEnableVertexAttribArray(3);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+    return data.size();
 }
 const string readFile(const string &fileName)
 {
@@ -271,16 +344,29 @@ void adjustCam()
     front.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
     front.y = sin(glm::radians(pitch));
     front.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+    //y=-z,z=y;
+    // up.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
+    // front.y = -sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+    // front.z = sin(glm::radians(pitch));
+    
+    
     dirn = glm::normalize(front);
+    // up = glm::normalize(cross(dirn,cross(up,dirn)));
     view = glm::lookAt(camera, camera+dirn, up);
+    // view = glm::lookAt(-10.f*sundirn,glm::vec3(0.f,0.f,0.f),glm::vec3(0.f,1.f,1.f));
     glUniformMatrix4fv(glGetUniformLocation(programID, "view"), 1, GL_FALSE, glm::value_ptr(view));
 }
 void changeSize(int w, int h) {
     if (h == 0)
         h = 1;
+    scrheight = h;
+    scrwidth = w;
     float ratio =  w * 1.0 / h;
+    centerX = w/2;
+    centerY = max(1,h/2);
     glViewport(0, 0, w, h);
     projection = glm::perspective(45.0f, ratio, 0.1f, 100.0f);
+    // projection = glm::ortho(-INF,+INF,-INF,+INF,.1f,100.f);
     glUniformMatrix4fv(glGetUniformLocation(programID, "proj"), 1, GL_FALSE, glm::value_ptr(projection));
 }
 std::vector<int> triangulate(const std::vector<int> &vert)
@@ -296,39 +382,41 @@ std::vector<int> triangulate(const std::vector<int> &vert)
     return ans;
 }
 float getNoise(float x,float y){
+    // return 0;
     int seed=1e7+321523;
     srand(seed-x*345-y*1752);
     return (double)(rand()%100 -50)/50.;
 }
-float getSmoothNoise(float x,float y){
+float getSmoothNoise(float x,float y, float c){
     // return 1;
-    float c=1;
     float corners =(getNoise(x+c,y+c) + getNoise(x-c,y-c) +getNoise(x-c,y+c)+getNoise(x+c,y-c))/16.;
-    float sides = (getNoise(x,y+c) + getNoise(x,y-c) +getNoise(x-c,y)+getNoise(x+c,y))/16.;
+    float sides = (getNoise(x,y+c) + getNoise(x,y-c) +getNoise(x-c,y)+getNoise(x+c,y))/8.;
     float center = getNoise(x,y)/4.;
     // cerr<<corners+sides+center<<endl;
     // return abs(corners+sides+center);
-    return corners+center*1.5+sides;
+    return (1.5*corners+center+1.5*sides);
 }
-float height(float x, float y)
+float height(float x, float y, float eps=1.f)
 {
-    // const int mult1 = 1, mult2 = 1;
+    const int mult1 = 1, mult2 = 1;
     // return sin(mult1*x+mult2*y);
     // return getNoise(x,y);
-    return getSmoothNoise(x,y);
+    // return 0;
+    return getSmoothNoise(x,y,eps);
 }
-glm::vec3 getNormal(float x, float y, float eps=0.1f)
+glm::vec3 getNormal(float x, float y, float eps=.1f)
 {
-    float me = height(x,y), up = height(x,y+eps)-me, right= height(x+eps,y)-me;
-    float down = height(x,y-eps)-me, left = height(x-eps,y)-me;
-    glm::vec3 first = glm::normalize(glm::vec3(-right,-up,eps));//right*up
-    glm::vec3 second = glm::normalize(glm::vec3(left,-up,eps));//up*left
-    glm::vec3 third = glm::normalize(glm::vec3(left,down,eps));//left*down
-    glm::vec3 fourth = glm::normalize(glm::vec3(-right,down,eps));//down*right
-    glm::vec3 net = glm::normalize((first+second+third+fourth)/4.f);
+    float me = height(x,y,eps), up = height(x,y+eps,eps)-me, right= height(x+eps,y,eps)-me;
+    float down = height(x,y-eps,eps)-me, left = height(x-eps,y,eps)-me;
+    // glm::vec3 first = glm::normalize(glm::vec3(-right,eps,-up));//right*up
+    // glm::vec3 second = glm::normalize(glm::vec3(left,-up,eps));//up*left
+    // glm::vec3 third = glm::normalize(glm::vec3(left,down,eps));//left*down
+    // glm::vec3 fourth = glm::normalize(glm::vec3(-right,down,eps));//down*right
+    // glm::vec3 net = glm::normalize((first+second+third+fourth)/4.f);
+    glm::vec3 net = glm::normalize(glm::vec3(right-left,2.f,up-down));
     return net;
 }
-GLuint generateTerrain(GLuint &VAO, float delta = 1, int inf = 20, float texMult = 0.3)
+GLuint generateTerrain(GLuint &VAO, float delta = 1, int inf = INF, float texMult = 0.3)
 {
     GLuint VBO, EBO;
     glGenBuffers(1, &VBO);
@@ -345,7 +433,7 @@ GLuint generateTerrain(GLuint &VAO, float delta = 1, int inf = 20, float texMult
         for(float y=-inf;y<=+inf;y+=delta)
         {
             glm::vec3 normal = getNormal(x,y);
-            buffer.push_back({x,y,height(x,y),0,1,0,0,normal.x,normal.y,normal.z,texMult*(x+inf),texMult*(y+inf)});
+            buffer.push_back({x,height(x,y),y,0,1,0,0,normal.x,normal.y,normal.z,texMult*(x+inf),texMult*2*inf-texMult*(y+inf)});
             if(previdxs.size())
             {
                 if(loc!=0)
@@ -386,7 +474,142 @@ GLuint generateTerrain(GLuint &VAO, float delta = 1, int inf = 20, float texMult
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
     return ebo.size();   
 }
-GLuint generateCloud()
+GLuint setupClouds()
 {
-    // vector<vertex> 
+    float vertices[20] = {
+    -1.50, 1.50, 1.50,0.0,0.0,
+     1.50, 1.50, 1.50,1.0,0.0,
+     1.50, 1.50,-1.50,1.0,1.0,
+    -1.50, 1.50,-1.50,0.0,1.0,
+    };
+    GLuint VAO, VBO;
+    glGenBuffers(1, &VBO);
+    glGenVertexArrays(1, &VAO);
+    glBindVertexArray(VAO);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float)*5, 0);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(float)*5, (GLvoid*)(sizeof(float)*3));
+    glEnableVertexAttribArray(1);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+    return VAO;
+}
+GLuint drawClouds(GLuint VAO, GLuint programID, GLuint texID)
+{
+    glUseProgram(programID);
+    glBindTexture(GL_TEXTURE_2D, texID);
+    glBindVertexArray(VAO);
+    glm::mat4 view = glm::lookAt(
+        glm::vec3(0.f,0.f,0.f),
+        dirn,
+        up
+    );
+    glUniformMatrix4fv(glGetUniformLocation(programID, "view"), 1, GL_FALSE, glm::value_ptr(view));
+    glUniformMatrix4fv(glGetUniformLocation(programID, "proj"), 1, GL_FALSE, glm::value_ptr(projection));
+    glEnable( GL_BLEND );  
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    for(glm::vec3 vec:cloudpos)
+    {
+        glm::mat4 model(1.f);
+        model = glm::translate(model, vec);
+        model = glm::translate(model, glm::vec3(.2f,0.f,.3f));
+        model = glm::scale(model, glm::vec3(scaleFac,1.f,scaleFac));
+        // cout<<scaleFac<<endl;
+        // debugmat(model);
+        glUniformMatrix4fv(glGetUniformLocation(programID, "model"), 1, GL_FALSE, glm::value_ptr(model));
+        glDrawArrays(GL_QUADS, 0, 4);
+    }
+    glDisable(GL_BLEND);  
+    glBindVertexArray(0);
+    glUseProgram(0);
+}
+GLuint drawSun(GLuint VAO, GLuint programID, GLuint texID)
+{
+    glUseProgram(programID);
+    glBindTexture(GL_TEXTURE_2D, texID);
+    glBindVertexArray(VAO);
+    glm::mat4 view = glm::lookAt(
+        glm::vec3(0.f,0.f,0.f),
+        dirn,
+        up
+    );
+    glUniformMatrix4fv(glGetUniformLocation(programID, "view"), 1, GL_FALSE, glm::value_ptr(view));
+    glUniformMatrix4fv(glGetUniformLocation(programID, "proj"), 1, GL_FALSE, glm::value_ptr(projection));
+    glEnable( GL_BLEND );  
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glm::mat4 model(1.f);
+    model = glm::translate(model, -sundirn*2.5f);
+    model = glm::scale(model, glm::vec3(scaleFac,1.f,scaleFac));
+    // cout<<scaleFac<<endl;
+    // debugmat(model);
+    glUniformMatrix4fv(glGetUniformLocation(programID, "model"), 1, GL_FALSE, glm::value_ptr(model));
+    glDrawArrays(GL_QUADS, 0, 4);
+    glDisable(GL_BLEND);  
+    glBindVertexArray(0);
+    glUseProgram(0);
+}
+GLuint drawOBJ(GLuint VAO, int numVertices, GLuint programID, GLuint texID, glm::vec3 tr, glm::mat4 model=glm::mat4(1.f), glm::mat4 view=::view, glm::mat4 projection=::projection, bool shadow=false)
+{
+    glUseProgram(programID);
+    if(!shadow)
+        glBindTexture(GL_TEXTURE_2D, texID);
+    glBindVertexArray(VAO);
+    tr.y = height(tr.x,tr.z)-.3f;
+    model = glm::translate(model, tr);
+    glUniformMatrix4fv(glGetUniformLocation(programID, "model"), 1, GL_FALSE, glm::value_ptr(model));
+    glUniformMatrix4fv(glGetUniformLocation(programID, "view"), 1, GL_FALSE, glm::value_ptr(view));
+    glUniformMatrix4fv(glGetUniformLocation(programID, "proj"), 1, GL_FALSE, glm::value_ptr(projection));
+    glDrawArrays(GL_TRIANGLES, 0, numVertices);
+    glBindVertexArray(0);
+    glUseProgram(0);
+}
+void drawTrees(glm::mat4 model=glm::mat4(1.f), glm::mat4 view=::view, glm::mat4 projection=::projection, GLuint objProgramID=::objProgramID, bool shadow=false)
+{
+    float mult = 0.98;
+    drawOBJ(objVAO, objNumVertices, objProgramID, objTexID, glm::vec3(0.f), model, view, projection, shadow);
+    drawOBJ(objVAO, objNumVertices, objProgramID, objTexID, glm::vec3(6.2f*mult,0.f,7.5f*mult), model, view, projection, shadow);
+    drawOBJ(objVAO, objNumVertices, objProgramID, objTexID, glm::vec3(7.8f*mult,0.f,-5.3f*mult), model, view, projection, shadow);
+    // drawOBJ(objVAO, objNumVertices, objProgramID, objTexID, glm::vec3(-3.6f*mult,0.f,-2.8f*mult), model, view, projection, shadow);
+    // drawOBJ(objVAO, objNumVertices, objProgramID, objTexID, glm::vec3(13.2f*mult,0.f,3.1f*mult), model, view, projection, shadow);
+    // drawOBJ(objVAO, objNumVertices, objProgramID, objTexID, glm::vec3(18.2f*mult,0.f,-4.5f*mult), model, view, projection, shadow);
+    drawOBJ(objVAO, objNumVertices, objProgramID, objTexID, glm::vec3(-15.8f*mult,0.f,-15.3f*mult), model, view, projection, shadow);
+    drawOBJ(objVAO, objNumVertices, objProgramID, objTexID, glm::vec3(-12.6f*mult,0.f,-12.8f*mult), model, view, projection, shadow);
+    drawOBJ(objVAO, objNumVertices, objProgramID, objTexID, glm::vec3(17.2f*mult,0.f,3.1f*mult), model, view, projection, shadow);
+}
+int GenShadows(int width=800,int height=800)
+{
+    GLuint FBO;
+    GLuint texID;
+    int texWidth = 2000, texHeight = 2000;
+    glGenFramebuffers(1, &FBO);
+    glGenTextures(1, &texID);
+    glBindTexture(GL_TEXTURE_2D, texID);
+    glBindFramebuffer(GL_FRAMEBUFFER, FBO);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, texWidth, texHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE,NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texID, 0);
+    if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+        throw FragmentbufferError();
+    }
+    glViewport(0,0,texWidth,texHeight);
+    glm::mat4 model(1.f);
+    glm::mat4 view = glm::lookAt(-10.f*sundirn,glm::vec3(0.f,0.f,0.f),glm::vec3(0.f,0.f,-1.f));
+    glm::mat4 projection = glm::ortho(-INF,+INF,-INF,+INF, .1f, 100.f);
+    GLuint progID = LoadProgram("vertex.vs","shadowfrag.frag");
+    glUseProgram(progID);
+    glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    drawTrees(model, view, projection, progID, true);
+    glUseProgram(0);
+    // glBindTexture(GL_TEXTURE_2D, texID);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glDeleteFramebuffers(1, &FBO);
+    glClearColor(0.2,0.5,0.8,0.0);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glViewport(0,0,scrwidth,scrheight);
+    return texID;
 }

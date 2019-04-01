@@ -1,0 +1,6 @@
+      help
+h:toggle help
+u:toggle fps limiter
+space:toggle wireframe
+f:toggle fullscreen
+q:quit
