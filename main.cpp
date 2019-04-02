@@ -43,9 +43,11 @@ void setup()
     font.loadFont("karumbi.fnt");
     font.drawPrep(readFile("helptext.txt"),-.8,.5,1,-.5,.001,1.,0.,1.);
     programID = LoadProgram("vertex.vs", "fragment.frag");
+    waterProgramID = LoadProgram("vertex.vs", "fragwater.frag");
     texID = loadTexture("grass_ground.bmp");
     // exit(0);
     terrainNumVertices = generateTerrain(terrainVAO);
+    waterNumVertices = generateWater(waterVAO);
     cloudTexID = loadTexture("cloud.png");
     cloudProgramID = LoadProgram("vertexCloud.vs", "fragmentCloud.frag");
     cloudVAO = setupClouds();
@@ -81,19 +83,8 @@ void displayMe()
     drawSun(cloudVAO, cloudProgramID, sunTexID);
     drawTrees();
     drawClouds(cloudVAO, cloudProgramID, cloudTexID);
-    glUseProgram(programID);
-    glUniform1i(glGetUniformLocation(programID,"theTexture"),0);
-    glUniform1i(glGetUniformLocation(programID,"shadowTex"),1);
-    glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, shadowTexID);
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, texID);
-    glBindVertexArray(terrainVAO);
-    // GLuint uid = glGetUniformLocation(programID, "Trans");
-    // glUniformMatrix4fv(uid, 1, GL_FALSE, glm::value_ptr(mvp));
-    // debugmat(projection);
-    // glDrawArrays(GL_TRIANGLES, 0, 3);
-    glDrawElements(GL_TRIANGLES, terrainNumVertices, GL_UNSIGNED_INT, 0);
+    drawTerrain();
+    drawWater();
     glutSwapBuffers();
     if(maxFPS)
         glutPostRedisplay();
@@ -202,25 +193,22 @@ void mouseFunc(int button, int state, int x, int y)
     switch(button)
     {
         case 3:
-            if(camera.y+dirn.y>0.5)
                 camera+=scrollmult*dirn;
             break; //scroll down
         case 4:
-            if(camera.y-dirn.y>0.5)
                 camera+=-scrollmult*dirn;
                 break; //scroll up
         case 5:
-        temp =cross(up,dirn);
-        if(camera.y-dirn.y>0.5) 
+        temp =glm::normalize(cross(up,dirn));
             camera-=scrollmult*temp;
         break; //scroll left
         case 6:
-        temp =cross(up,dirn);
-        if(camera.y+temp.y>0.5)
+        temp =glm::normalize(cross(up,dirn));
             camera+=scrollmult*temp;
         break; //scroll right
         // case GLUT_RIGHT_BUTTON:camera.z++;break;
     }
+    clampCam(camera);
 }
 void mouseMovement(int x, int y) 
 {

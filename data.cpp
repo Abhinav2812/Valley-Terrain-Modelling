@@ -14,13 +14,15 @@ struct vertex{
     float tex[2];
 };
 typedef unsigned int GLuint;
-GLuint VAO, VBO, EBO, programID, texID, terrainVAO, terrainNumVertices, cloudNumVertices, cloudTexID, cloudProgramID, cloudVAO, sunTexID, objNumVertices, objVAO, objProgramID, objTexID, shadowTexID;
+GLuint VAO, VBO, EBO, waterVAO, waterProgramID, programID, texID, terrainVAO, terrainNumVertices, waterNumVertices, cloudNumVertices, cloudTexID, cloudProgramID, cloudVAO, sunTexID, objNumVertices, objVAO, objProgramID, objTexID, shadowTexID;
 GLuint scrwidth, scrheight;
 int frame = 0, Time = 0, timebase=0, centerX, centerY;
 const int FPS = 120;
 bool fullScreen = true, maxFPS = false, wireframe = false, showHelp = true, mouseLock = true;
 const float INF = 20;
 float pitch= 0.f,yaw=0.f;
+glm::vec3 cameramin(-INF,1.f,-INF);
+glm::vec3 cameramax(+INF,100.f,+INF);
 glm::vec3 camera(-5.f,2.f,0.f);
 glm::vec3 dirn;
 glm::vec3 up(0.f,1.f,0.f);

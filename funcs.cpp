@@ -402,6 +402,8 @@ float height(float x, float y, float eps=1.f)
     // return sin(mult1*x+mult2*y);
     // return getNoise(x,y);
     // return 0;
+    if(x>0&&x<19&&y>0&&y<19)
+        return -2;
     return getSmoothNoise(x,y,eps);
 }
 glm::vec3 getNormal(float x, float y, float eps=.1f)
@@ -433,7 +435,65 @@ GLuint generateTerrain(GLuint &VAO, float delta = 1, int inf = INF, float texMul
         for(float y=-inf;y<=+inf;y+=delta)
         {
             glm::vec3 normal = getNormal(x,y);
-            buffer.push_back({x,height(x,y),y,0,1,0,0,normal.x,normal.y,normal.z,texMult*(x+inf),texMult*2*inf-texMult*(y+inf)});
+            buffer.push_back({x,height(x,y),y,0,1,0,1,normal.x,normal.y,normal.z,texMult*(x+inf),texMult*2*inf-texMult*(y+inf)});
+            if(previdxs.size())
+            {
+                if(loc!=0)
+                {
+                    ebo.push_back(numVertex-1);
+                    ebo.push_back(numVertex);
+                    ebo.push_back(previdxs[loc]);
+                }
+                if(loc+1<previdxs.size())
+                {
+                    ebo.push_back(previdxs[loc]);
+                    ebo.push_back(previdxs[loc+1]);
+                    ebo.push_back(numVertex);
+                }
+                loc++;
+            }
+            curridxs.push_back(numVertex);
+            numVertex++;
+        }
+        swap(curridxs,previdxs);
+        curridxs.clear();
+    }
+    glBindVertexArray(VAO);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertex)*buffer.size(), buffer.data(), GL_STATIC_DRAW);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int)*ebo.size(), ebo.data(), GL_STATIC_DRAW);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(buffer[0]), 0);    
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(buffer[0]), (GLvoid*)(sizeof(float)*3));
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(buffer[0]), (GLvoid*)(sizeof(float)*7));
+    glEnableVertexAttribArray(2);
+    glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(buffer[0]), (GLvoid*)(sizeof(float)*10));
+    glEnableVertexAttribArray(3);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    return ebo.size();   
+}
+GLuint generateWater(GLuint &VAO, float delta = 1, float startx = 0, float endx = 19 , float starty = 0, float endy = 19, float texMult = 0.3)
+{
+    GLuint VBO, EBO;
+    glGenBuffers(1, &VBO);
+    glGenBuffers(1, &EBO);
+    glGenVertexArrays(1, &VAO);
+    GLuint numVertex = 0;
+    vector<vertex> buffer;
+    vector<GLuint> ebo;
+    vector<GLuint> previdxs,curridxs;
+    for(float x=startx;x<=endx;x+=delta)
+    {
+        bool flag = 1;
+        int loc = 0;
+        for(float y=starty;y<=endy;y+=delta)
+        {
+            glm::vec3 normal = getNormal(x,y);
+            buffer.push_back({x,0,y,0,0.3,1,.5,0,1,0,0,0});
             if(previdxs.size())
             {
                 if(loc!=0)
@@ -578,6 +638,36 @@ void drawTrees(glm::mat4 model=glm::mat4(1.f), glm::mat4 view=::view, glm::mat4 
     drawOBJ(objVAO, objNumVertices, objProgramID, objTexID, glm::vec3(-12.6f*mult,0.f,-12.8f*mult), model, view, projection, shadow);
     drawOBJ(objVAO, objNumVertices, objProgramID, objTexID, glm::vec3(17.2f*mult,0.f,3.1f*mult), model, view, projection, shadow);
 }
+void drawTerrain()
+{
+    glUseProgram(programID);
+    glUniform1i(glGetUniformLocation(programID,"theTexture"),0);
+    glUniform1i(glGetUniformLocation(programID,"shadowTex"),1);
+    glUniform1i(glGetUniformLocation(programID,"isWater"),0);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, shadowTexID);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, texID);
+    glBindVertexArray(terrainVAO);
+    // GLuint uid = glGetUniformLocation(programID, "Trans");
+    // glUniformMatrix4fv(uid, 1, GL_FALSE, glm::value_ptr(mvp));
+    // debugmat(projection);
+    // glDrawArrays(GL_TRIANGLES, 0, 3);
+    glDrawElements(GL_TRIANGLES, terrainNumVertices, GL_UNSIGNED_INT, 0);
+}
+void drawWater()
+{
+    glEnable( GL_BLEND );  
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glUseProgram(programID);
+    glUniform1i(glGetUniformLocation(programID,"isWater"),1);
+    glUniform1f(glGetUniformLocation(programID,"t"),Time*.002f);
+    glUniform3fv(glGetUniformLocation(programID, "viewPos"), 1, glm::value_ptr(camera));
+    glBindVertexArray(waterVAO);
+    glDrawElements(GL_TRIANGLES, waterNumVertices, GL_UNSIGNED_INT, 0);
+    glBindVertexArray(0);
+    glDisable(GL_BLEND);
+}
 int GenShadows(int width=800,int height=800)
 {
     GLuint FBO;
@@ -612,4 +702,9 @@ int GenShadows(int width=800,int height=800)
     glClear(GL_COLOR_BUFFER_BIT);
     glViewport(0,0,scrwidth,scrheight);
     return texID;
+}
+void clampCam(glm::vec3 &cam)
+{
+    for(int i=0;i<3;i++)
+        cam[i] = max(min(cameramax[i],cam[i]),cameramin[i]);
 }
