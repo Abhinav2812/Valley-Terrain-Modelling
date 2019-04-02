@@ -19,7 +19,8 @@ void main()
     if(isWater)
     {
         fragColorTemp = color;
-        spec = pow(max(dot(viewdir,-sunRayDirn),0.0),20);
+        vec3 refl = normalize(sunRayDirn-2*(dot(sunRayDirn,normal))*normal);
+        spec = pow(max(dot(viewdir,refl),0.0),20);
     }
     vec4 specular = specularWeight*spec*vec4(1,1,1,1);
     float ambient = 0.1;
