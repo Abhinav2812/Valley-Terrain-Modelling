@@ -22,10 +22,19 @@ void main()
     normal = Normal;
     if(isWater)
     {
-        tmpposition.y = .3*sin(position.x+t);
+        // first pattern
+        /*
+        tmpposition.y = position.y+.3*sin(position.x+t);
         normal.y = .1f;
-        normal.x = .1*cos(position.x+t);
+        normal.x = -.1*cos(position.x+t);
         normal.z = 0;
+        normal = normalize(normal);
+        */
+        //second pattern
+        tmpposition.y = position.y+.15*(sin(position.x+position.z+t)+sin(position.x-position.z+t)+sin(-position.x+position.z+t));
+        normal.y = .1f;
+        normal.x = -.1*(cos(position.x+position.z+t)+cos(position.x-position.z+t)-cos(-position.x+position.z+t));
+        normal.z = -.1*(cos(position.x+position.z+t)-cos(position.x+position.z+t)+cos(-position.x+position.z+t));
         normal = normalize(normal);
     }
     fragPos = model * position;

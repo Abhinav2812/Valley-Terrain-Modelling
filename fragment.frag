@@ -21,6 +21,9 @@ void main()
         fragColorTemp = color;
         vec3 refl = normalize(sunRayDirn-2*(dot(sunRayDirn,normal))*normal);
         spec = pow(max(dot(viewdir,refl),0.0),20);
+        //sun reflection "jugaad"
+        refl = normalize(sunRayDirn-2*(dot(sunRayDirn,vec3(0,1,0)))*vec3(0,1,0));
+        spec+=2*pow(max(dot(viewdir,refl),0.0),80);
     }
     vec4 specular = specularWeight*spec*vec4(1,1,1,1);
     float ambient = 0.1;

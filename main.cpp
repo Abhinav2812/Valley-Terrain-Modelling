@@ -40,8 +40,9 @@ void fps()
 }
 void setup()
 {
-    font.loadFont("karumbi.fnt");
-    font.drawPrep(readFile("helptext.txt"),-.8,.5,1,-.5,.001,1.,0.,1.);
+    vector<string> available_fonts = {"font.fnt","comic-sans.fnt","karumbi.fnt"};
+    font.loadFont(available_fonts[1]);
+    font.drawPrep(readFile("helptext.txt"),-.8,.8,1,-.8,.001,1.,0.,1.);
     programID = LoadProgram("vertex.vs", "fragment.frag");
     waterProgramID = LoadProgram("vertex.vs", "fragwater.frag");
     texID = loadTexture("grass_ground.bmp");
@@ -170,12 +171,30 @@ void keyboard(unsigned char c, int x, int y)
             glutSetCursor(GLUT_CURSOR_LEFT_ARROW);
         }
         break;
-        case 'w':
+        case '+':
         scaleFac+=.1;
         break;
-        case 's':
+        case '-':
         if(scaleFac>.2f)
             scaleFac-=.1;
+        break;
+        case 'w': camera+=scrollmult*glm::normalize(glm::vec3(dirn.x,0,dirn.z));
+        clampCam(camera);
+        break;
+        case 's': camera-=scrollmult*glm::normalize(glm::vec3(dirn.x,0,dirn.z));
+        clampCam(camera);
+        break;
+        case 'a': camera-=scrollmult*glm::normalize(glm::vec3(-dirn.z,0,dirn.x));
+        clampCam(camera);
+        break;
+        case 'd': camera+=scrollmult*glm::normalize(glm::vec3(-dirn.z,0,dirn.x));
+        clampCam(camera);
+        break;
+        case 'z': camera.y+=scrollmult;
+        clampCam(camera);
+        break;
+        case 'x': camera.y-=scrollmult;
+        clampCam(camera);
         break;
     }
     // translate(origin.x,origin.y,origin.z);
@@ -188,7 +207,6 @@ void mousetoCenter()
 }
 void mouseFunc(int button, int state, int x, int y)
 {
-    float scrollmult=.3f;
     glm::vec3 temp;
     switch(button)
     {

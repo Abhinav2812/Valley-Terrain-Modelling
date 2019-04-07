@@ -493,7 +493,7 @@ GLuint generateWater(GLuint &VAO, float delta = 1, float startx = 0, float endx 
         for(float y=starty;y<=endy;y+=delta)
         {
             glm::vec3 normal = getNormal(x,y);
-            buffer.push_back({x,0,y,0,0.3,1,.5,0,1,0,0,0});
+            buffer.push_back({x,-0.5,y,0,0.3,1,.5,0,1,0,0,0});
             if(previdxs.size())
             {
                 if(loc!=0)
