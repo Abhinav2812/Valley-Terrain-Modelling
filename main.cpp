@@ -178,22 +178,22 @@ void keyboard(unsigned char c, int x, int y)
         if(scaleFac>.2f)
             scaleFac-=.1;
         break;
-        case 'w': camera+=scrollmult*glm::normalize(glm::vec3(dirn.x,0,dirn.z));
+        case 'w':case 'W': camera+=scrollmult*glm::normalize(glm::vec3(dirn.x,0,dirn.z));
         clampCam(camera);
         break;
-        case 's': camera-=scrollmult*glm::normalize(glm::vec3(dirn.x,0,dirn.z));
+        case 's':case 'S': camera-=scrollmult*glm::normalize(glm::vec3(dirn.x,0,dirn.z));
         clampCam(camera);
         break;
-        case 'a': camera-=scrollmult*glm::normalize(glm::vec3(-dirn.z,0,dirn.x));
+        case 'a':case 'A': camera-=scrollmult*glm::normalize(glm::vec3(-dirn.z,0,dirn.x));
         clampCam(camera);
         break;
-        case 'd': camera+=scrollmult*glm::normalize(glm::vec3(-dirn.z,0,dirn.x));
+        case 'd':case 'D': camera+=scrollmult*glm::normalize(glm::vec3(-dirn.z,0,dirn.x));
         clampCam(camera);
         break;
-        case 'z': camera.y+=scrollmult;
+        case 'z':case 'Z': camera.y+=scrollmult;
         clampCam(camera);
         break;
-        case 'x': camera.y-=scrollmult;
+        case 'x':case 'X': camera.y-=scrollmult;
         clampCam(camera);
         break;
     }
@@ -264,8 +264,6 @@ void mouseMovement(int x, int y)
 int main(int argc, char **argv)
 {
     float val = height(10,10);
-    for(int i=0;i<100;i++)
-        assert(val==height(10,10));
     glutInit(&argc,argv);
     glutInitDisplayMode(GLUT_DOUBLE|GLUT_RGBA|GLUT_DEPTH);
     glutCreateWindow("Valley Terrain Modelling");

@@ -492,7 +492,6 @@ GLuint generateWater(GLuint &VAO, float delta = 1, float startx = 0, float endx 
         int loc = 0;
         for(float y=starty;y<=endy;y+=delta)
         {
-            glm::vec3 normal = getNormal(x,y);
             buffer.push_back({x,-0.5,y,0,0.3,1,.5,0,1,0,0,0});
             if(previdxs.size())
             {
@@ -703,6 +702,7 @@ int GenShadows(int width=800,int height=800)
     glViewport(0,0,scrwidth,scrheight);
     return texID;
 }
+
 void clampCam(glm::vec3 &cam)
 {
     for(int i=0;i<3;i++)
