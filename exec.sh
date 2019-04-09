@@ -1,1 +1,0 @@
-g++ '/home/abhinav/projects/CS 352/Valley-Terrain-Modelling/main.cpp' -o '/home/abhinav/projects/CS 352/Valley-Terrain-Modelling/main' -lglut -lGLU -lGL -lglfw -lX11 -lpthread -lXi -ldl -lGLEW && '/home/abhinav/projects/CS 352/Valley-Terrain-Modelling/main'
