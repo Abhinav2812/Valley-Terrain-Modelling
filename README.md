@@ -20,3 +20,10 @@ cmake ..
 make
 ./sim
 ```
+Relevant source files :-
+src/main.cpp
+include/data.h
+include/funcs.hpp
+
+Flowchart :-
+![Flowchart](flowchart.png)
