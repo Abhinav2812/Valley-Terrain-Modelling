@@ -1,3 +1,0 @@
-/home/akhil/Desktop/College_Projects/Valley-Terrain-Modelling/build/CMakeFiles/rebuild_cache.dir
-/home/akhil/Desktop/College_Projects/Valley-Terrain-Modelling/build/CMakeFiles/sim.dir
-/home/akhil/Desktop/College_Projects/Valley-Terrain-Modelling/build/CMakeFiles/edit_cache.dir

@@ -1,1 +1,0 @@
-/usr/bin/c++    -rdynamic CMakeFiles/sim.dir/src/main.cpp.o  -o sim -lglut -lGLU -lGL -lglfw -lX11 -lpthread -lXi -ldl -lGLEW 
